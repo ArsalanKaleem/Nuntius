@@ -56,3 +56,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/sample/
+    # Optional Unicode fonts for the PDF report. The folder ships with only a
+    # README, which is enough to satisfy the asset declaration; drop the three
+    # .ttf files named in assets/fonts/README.md in beside it and the report
+    # renders emoji and non-Latin scripts instead of omitting them.
+    - assets/fonts/
