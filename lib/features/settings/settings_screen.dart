@@ -38,8 +38,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         title: const Text('Delete everything?'),
         content: const Text(
           'Every imported chat, every saved report and every setting will be '
-          'removed from this device. Nothing was ever sent anywhere else, so '
-          'this deletes all of it. It cannot be undone.',
+              'removed from this device. Nothing was ever sent anywhere else, so '
+              'this deletes all of it. It cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -109,8 +109,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SizedBox(height: 6),
                 Text(
                   'Counters, charts and the Wrapped story. Choose Off if '
-                  'movement is distracting — the app also follows your '
-                  'system-wide reduce-motion setting on its own.',
+                      'movement is distracting — the app also follows your '
+                      'system-wide reduce-motion setting on its own.',
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 12),
@@ -182,9 +182,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SizedBox(height: 10),
                 Text(
                   'Nuntius has no account, no server and no analytics. Your '
-                  'export is read and analysed on this device, and the only '
-                  'copy it keeps lives in the app\'s private storage. Images '
-                  'and PDFs are only shared when you tap share.',
+                      'export is read and analysed on this device, and the only '
+                      'copy it keeps lives in the app\'s private storage. Images '
+                      'and PDFs are only shared when you tap share.',
                   style: theme.textTheme.bodyMedium,
                 ),
               ],
@@ -248,7 +248,16 @@ class _Row extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Text(value, style: theme.textTheme.titleMedium),
+          // Flexible rather than a bare Text: some of these values are words
+          // ("Perfectly balanced", "Standard") rather than short numbers, and
+          // at a large text scale a fixed child would run off the row.
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: theme.textTheme.titleMedium,
+            ),
+          ),
         ],
       ),
     );
