@@ -91,15 +91,30 @@ class WordsTab extends StatelessWidget {
                   runSpacing: 14,
                   children: [
                     for (final e in emoji.top.take(12))
-                      Column(
-                        children: [
-                          Text(e.name, style: const TextStyle(fontSize: 28)),
-                          const SizedBox(height: 2),
-                          Text(
-                            Fmt.compact(e.value),
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                        ],
+                      SizedBox(
+                        width: 48,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Emoji are drawn by the platform font and ignore
+                            // the text scale, so this glyph size is fixed on
+                            // purpose; only the count below it scales.
+                            Text(
+                              e.name,
+                              style: const TextStyle(fontSize: 28),
+                              maxLines: 1,
+                            ),
+                            const SizedBox(height: 2),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                Fmt.compact(e.value),
+                                style: theme.textTheme.bodyMedium,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                   ],
                 ),
@@ -114,10 +129,12 @@ class WordsTab extends StatelessWidget {
                       child: Row(
                         children: [
                           SizedBox(
-                            width: 96,
+                            width: 104,
                             child: Text(
                               '${mood.icon} ${mood.label}',
                               style: theme.textTheme.bodyMedium,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Expanded(
@@ -127,7 +144,7 @@ class WordsTab extends StatelessWidget {
                                 value: emoji.totalEmojis == 0
                                     ? 0
                                     : (emoji.moodBreakdown[mood] ?? 0) /
-                                        emoji.totalEmojis,
+                                    emoji.totalEmojis,
                                 minHeight: 8,
                                 backgroundColor: theme.colorScheme.outline,
                               ),
@@ -171,7 +188,7 @@ class WordsTab extends StatelessWidget {
                       sender == null
                           ? '${Fmt.n(longest.body.length)} characters'
                           : '${Fmt.n(longest.body.length)} characters '
-                              'from $sender',
+                          'from $sender',
                       style: theme.textTheme.titleMedium,
                     ),
                     const SizedBox(height: 10),
@@ -261,11 +278,20 @@ class _Mini extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Eyebrow(label),
-          const SizedBox(height: 6),
-          Text(value, style: Theme.of(context).textTheme.titleLarge),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Eyebrow(label),
+      const SizedBox(height: 6),
+      FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(
+          value,
+          style: Theme.of(context).textTheme.titleLarge,
+          maxLines: 1,
+        ),
+      ),
+    ],
+  );
 }
