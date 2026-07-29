@@ -5,6 +5,7 @@ import 'dart:isolate';
 
 import '../../features/analytics/analytics_engine.dart';
 import '../../features/parser/whatsapp_parser.dart';
+import '../../features/parser/whatsapp_patterns.dart';
 import '../../models/chat_analytics.dart';
 import '../../models/parsed_chat.dart';
 
@@ -18,11 +19,11 @@ class ImportProgress {
   final double value;
 
   String get label => switch (phase) {
-        ImportPhase.reading => 'Reading the file',
-        ImportPhase.parsing => 'Reading messages',
-        ImportPhase.analyzing => 'Finding patterns',
-        ImportPhase.done => 'Done',
-      };
+    ImportPhase.reading => 'Reading the file',
+    ImportPhase.parsing => 'Reading messages',
+    ImportPhase.analyzing => 'Finding patterns',
+    ImportPhase.done => 'Done',
+  };
 }
 
 class ImportResult {
@@ -75,11 +76,20 @@ class ChatPreview {
 class ImportService {
   const ImportService();
 
-  /// Largest file accepted. A WhatsApp export without media is plain text, so
-  /// 200 MB is far beyond any real chat and well within what the parser can
-  /// hold in memory.
-  static const maxBytes = 200 * 1024 * 1024;
-
+  /// There is no size limit.
+  ///
+  /// The earlier version refused anything over 200 MB, which was a limit
+  /// invented to protect a design that read the whole export into one string
+  /// with `readAsString`. That is the expensive part: a 200 MB export costs
+  /// roughly 400 MB as a Dart string, on top of the messages built from it, and
+  /// the string is thrown away immediately afterwards.
+  ///
+  /// [import] instead streams the file from disk twice — once to decide the date
+  /// format, once to build messages — and never holds more than one line of raw
+  /// text. Peak memory is now set by the message list alone, which is what the
+  /// user actually asked to analyse, so a cap on file size no longer buys
+  /// anything. Reading a large file off disk twice costs a second or two and is
+  /// reported through [onProgress].
   /// Reads the first chunk of a file to show a preview without paying for a
   /// full parse. A 40 MB export takes a moment; deciding whether the user
   /// picked the right file should not.
@@ -145,9 +155,9 @@ class ImportService {
   }
 
   Future<ImportResult> import(
-    String path, {
-    void Function(ImportProgress)? onProgress,
-  }) async {
+      String path, {
+        void Function(ImportProgress)? onProgress,
+      }) async {
     final file = File(path);
     if (!await file.exists()) {
       throw const ChatImportException('That file is no longer available.');
@@ -156,14 +166,6 @@ class ImportService {
     if (length == 0) {
       throw const ChatImportException('That file is empty.');
     }
-    if (length > maxBytes) {
-      throw const ChatImportException(
-        'That file is larger than 200 MB. Export the chat without media and '
-        'try again.',
-        recoverable: false,
-      );
-    }
-
     final receivePort = ReceivePort();
     final errorPort = ReceivePort();
     final completer = Completer<ImportResult>();
@@ -198,7 +200,7 @@ class ImportService {
         completer.completeError(
           const ChatImportException(
             'Something went wrong while reading that chat. It may be '
-            'corrupted or in an unsupported format.',
+                'corrupted or in an unsupported format.',
           ),
         );
       }
@@ -220,40 +222,53 @@ class ImportService {
   static Future<void> _worker(_WorkerArgs args) async {
     final port = args.sendPort;
     try {
-      port.send(const ImportProgress(ImportPhase.reading, 0));
-
       final file = File(args.path);
-      String raw;
-      try {
-        raw = await file.readAsString();
-      } on FileSystemException {
-        Isolate.exit(
-          port,
-          const ChatImportException('That file could not be opened.'),
-        );
-      } on FormatException {
-        // Not valid UTF-8 — fall back to a lenient decode rather than failing,
-        // because some older Android exports carry stray bytes.
-        raw = String.fromCharCodes(await file.readAsBytes());
-      }
+      final name = args.path.split(Platform.pathSeparator).last;
+      final total = args.bytes;
 
-      port.send(const ImportProgress(ImportPhase.parsing, 0.1));
-
-      final chat = const WhatsAppParser().parse(
-        raw,
-        sourceName: args.path.split(Platform.pathSeparator).last,
-        sourceBytes: args.bytes,
-        onProgress: (p) => port.send(
-          ImportProgress(ImportPhase.parsing, 0.1 + p * 0.5),
+      // Pass one: work out whether the export is day-first, month-first or
+      // year-first. The probe holds three counters and at most 400 sampled
+      // dates, so this pass costs the same on a 2-million-message chat as on a
+      // 200-message one.
+      port.send(const ImportProgress(ImportPhase.reading, 0));
+      final probe = DateOrderProbe();
+      await _forEachLine(
+        file,
+        total: total,
+        onLine: probe.add,
+        onProgress: (fraction) => port.send(
+          ImportProgress(ImportPhase.reading, fraction * 0.25),
         ),
       );
+
+      final warnings = <ParseWarning>[];
+      final order = probe.resolve(warnings);
+
+      // Pass two: build the messages.
+      port.send(const ImportProgress(ImportPhase.parsing, 0.25));
+      final parser = ChatLineParser(
+        order: order,
+        sourceName: name,
+        sourceBytes: total,
+        warnings: warnings,
+      );
+      await _forEachLine(
+        file,
+        total: total,
+        onLine: parser.add,
+        onProgress: (fraction) => port.send(
+          ImportProgress(ImportPhase.parsing, 0.25 + fraction * 0.35),
+        ),
+      );
+
+      final chat = parser.finish();
 
       if (chat.messages.isEmpty) {
         Isolate.exit(
           port,
           const ChatImportException(
             'No messages found. Make sure you picked the .txt file from a '
-            'WhatsApp export, not a .zip or a screenshot.',
+                'WhatsApp export, not a .zip or a screenshot.',
           ),
         );
       }
@@ -269,12 +284,67 @@ class ImportService {
 
       // Hands the result over without copying it.
       Isolate.exit(port, ImportResult(chat, analytics));
+    } on FileSystemException {
+      Isolate.exit(
+        port,
+        const ChatImportException(
+          'That file could not be opened. If it came from a cloud folder, '
+              'download it to the device and try again.',
+        ),
+      );
     } catch (error) {
       Isolate.exit(
         port,
         ChatImportException('Could not read that chat: $error'),
       );
     }
+  }
+
+  /// Streams [file] line by line, calling [onLine] for each.
+  ///
+  /// Three details matter here:
+  ///
+  ///  * `Utf8Decoder(allowMalformed: true)` is chunk-aware, so a multi-byte
+  ///    character split across two reads is reassembled rather than corrupted,
+  ///    and a stray byte from an old Android export replaces itself with U+FFFD
+  ///    instead of throwing.
+  ///  * Bidi and zero-width marks are stripped here rather than downstream.
+  ///    iOS exports begin many lines with U+200E, which would otherwise defeat
+  ///    the anchored date patterns that both the probe and the parser rely on.
+  ///  * Progress is measured in bytes consumed, not lines seen, because the
+  ///    line count is unknown until the file has been read.
+  static Future<void> _forEachLine(
+      File file, {
+        required int total,
+        required void Function(String line) onLine,
+        required void Function(double fraction) onProgress,
+      }) async {
+    var bytesSeen = 0;
+    var lastReported = -1;
+
+    final lines = file
+        .openRead()
+        .map((chunk) {
+      bytesSeen += chunk.length;
+      return chunk;
+    })
+        .transform(const Utf8Decoder(allowMalformed: true))
+        .transform(const LineSplitter());
+
+    await for (final line in lines) {
+      onLine(line.replaceAll(WhatsAppPatterns.invisibles, ''));
+
+      // Throttled to whole percentage points: a 200 MB file has millions of
+      // lines, and posting a message per line would cost more than the parse.
+      if (total > 0) {
+        final percent = (bytesSeen * 100 ~/ total).clamp(0, 100);
+        if (percent != lastReported) {
+          lastReported = percent;
+          onProgress(percent / 100);
+        }
+      }
+    }
+    onProgress(1);
   }
 }
 
