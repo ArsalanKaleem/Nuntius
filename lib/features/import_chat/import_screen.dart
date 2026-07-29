@@ -26,6 +26,26 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   String? _path;
   bool _peeking = false;
 
+  /// True while a cloud-backed file is being copied to local storage, which is
+  /// the one step of the import that can be slow before any parsing starts.
+  bool _copying = false;
+
+  /// Opens the system picker and resolves whatever comes back to a readable
+  /// local path.
+  ///
+  /// Two decisions here exist because of how cloud storage behaves:
+  ///
+  ///  * The filter is [FileType.any] rather than a `.txt` extension filter.
+  ///    Extension filtering on Android is implemented as a MIME-type filter, and
+  ///    files served by Google Drive, OneDrive and most other document providers
+  ///    frequently arrive as `application/octet-stream` or with no type at all —
+  ///    so a `.txt` filter greys out the very file the user is trying to pick.
+  ///    Nuntius validates by *content* instead: [ImportService.peek] reads the
+  ///    head of the file and looks for real WhatsApp message headers, which is a
+  ///    stronger check than the file name ever was.
+  ///  * A picked file may have no filesystem path. Document providers hand back
+  ///    a `content://` URI, and `dart:io` cannot open one, so the byte stream is
+  ///    spooled to a temporary file first.
   Future<void> _pick() async {
     setState(() {
       _peeking = true;
@@ -33,26 +53,52 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     });
     try {
       final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: const ['txt'],
+        type: FileType.any,
         withData: false,
+        // Gives us a stream for provider-backed files that have no path.
+        withReadStream: true,
       );
-      final path = result?.files.single.path;
-      if (path == null) {
+
+      if (result == null || result.files.isEmpty) {
         // Cancelling is not an error — just go back to the empty state.
         if (mounted) setState(() => _peeking = false);
         return;
       }
+
+      final picked = result.files.single;
+      var path = picked.path;
+
+      if (path == null) {
+        final stream = picked.readStream;
+        if (stream == null) {
+          if (mounted) setState(() => _peeking = false);
+          _showError(
+            'That file could not be read from where it is stored. Download it '
+                'to the device and pick it again.',
+          );
+          return;
+        }
+        if (mounted) setState(() => _copying = true);
+        final copy = await ref
+            .read(fileServiceProvider)
+            .spoolToTemporary(picked.name, stream);
+        path = copy.path;
+      }
+
       final preview = await ref.read(importServiceProvider).peek(path);
       if (!mounted) return;
       setState(() {
         _path = path;
         _preview = preview;
         _peeking = false;
+        _copying = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _peeking = false);
+      setState(() {
+        _peeking = false;
+        _copying = false;
+      });
       _showError('That file could not be opened. $e');
     }
   }
@@ -71,7 +117,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     final path = _path;
     if (path == null) return;
     final session =
-        await ref.read(importControllerProvider.notifier).importFile(path);
+    await ref.read(importControllerProvider.notifier).importFile(path);
     if (!mounted) return;
     if (session == null) {
       final error = ref.read(importControllerProvider).error;
@@ -98,7 +144,30 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
 
   Widget _body() {
     if (_peeking) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 20),
+            Text(
+              _copying
+                  ? 'Copying the file to this device'
+                  : 'Checking the file',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            if (_copying) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Files stored in Drive or another cloud folder are downloaded '
+                    'first. Nothing is uploaded.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ],
+        ),
+      );
     }
     final preview = _preview;
     if (preview == null) {
@@ -119,7 +188,7 @@ class _Instructions extends StatelessWidget {
     'Open the chat in WhatsApp',
     'Tap the chat name, then Export chat',
     'Choose Without media',
-    'Save the .txt file to this device',
+    'Save it anywhere — this device, Drive, Files',
   ];
 
   @override
@@ -132,7 +201,8 @@ class _Instructions extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           'WhatsApp can save any conversation as a plain text file. That file '
-          'is all Nuntius needs.',
+              'is all Nuntius needs — at any size, from anywhere your phone can '
+              'reach, whatever it happens to be named.',
           style: theme.textTheme.bodyLarge,
         ),
         const SizedBox(height: 28),
@@ -161,7 +231,7 @@ class _Instructions extends StatelessWidget {
         FilledButton.icon(
           onPressed: onPick,
           icon: const Icon(Icons.folder_open_outlined),
-          label: const Text('Choose a .txt file'),
+          label: const Text('Choose the export'),
         ),
         const SizedBox(height: 24),
         const PrivacyBadge(
@@ -179,14 +249,16 @@ class _UnsupportedFile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => EmptyState(
-        emoji: '🤔',
-        title: 'That does not look like a WhatsApp export',
-        message: '${preview.fileName} has no lines in the format WhatsApp '
-            'writes. Export the chat again and choose "Without media" — the '
-            'file you want ends in .txt.',
-        actionLabel: 'Pick a different file',
-        onAction: onPickAgain,
-      );
+    emoji: '🤔',
+    title: 'That does not look like a WhatsApp export',
+    message: '${preview.fileName} has no lines in the format WhatsApp '
+        'writes. Export the chat again and choose "Without media" — the '
+        'file you want is the text file it produces. Nuntius checks what is '
+        'inside the file rather than its name, so the extension is not '
+        'the problem here.',
+    actionLabel: 'Pick a different file',
+    onAction: onPickAgain,
+  );
 }
 
 class _Preview extends StatelessWidget {
@@ -201,11 +273,11 @@ class _Preview extends StatelessWidget {
   final VoidCallback onPickAgain;
 
   String get _formatLabel => switch (preview.dateOrder) {
-        DateOrder.dayFirst => 'Day/month dates',
-        DateOrder.monthFirst => 'Month/day dates',
-        DateOrder.yearFirst => 'Year-first dates',
-        null => 'Unknown format',
-      };
+    DateOrder.dayFirst => 'Day/month dates',
+    DateOrder.monthFirst => 'Month/day dates',
+    DateOrder.yearFirst => 'Year-first dates',
+    null => 'Unknown format',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -229,9 +301,9 @@ class _Preview extends StatelessWidget {
                       value: preview.participants.isEmpty
                           ? '—'
                           : preview.participants.take(4).join(', ') +
-                              (preview.participants.length > 4
-                                  ? ' +${preview.participants.length - 4}'
-                                  : ''),
+                          (preview.participants.length > 4
+                              ? ' +${preview.participants.length - 4}'
+                              : ''),
                     ),
                     _Row(
                       label: 'Starts',
@@ -245,7 +317,7 @@ class _Preview extends StatelessWidget {
               const SizedBox(height: 16),
               Text(
                 'Counts are read from the start of the file. The full total '
-                'appears once the analysis finishes.',
+                    'appears once the analysis finishes.',
                 style: theme.textTheme.bodyMedium,
               ),
             ],
