@@ -38,6 +38,19 @@ abstract final class EmojiUtils {
   }
 
   /// Strips skin-tone and variation modifiers so 👍🏽 and 👍 are one entry.
+  /// Removes every emoji from [text].
+  ///
+  /// Used by the PDF report when no emoji-capable font is bundled: dropping the
+  /// characters gives clean prose, whereas leaving them in gives a row of empty
+  /// tofu boxes.
+  static String strip(String text) {
+    if (!mightContainEmoji(text)) return text;
+    return text
+        .replaceAll(pattern, '')
+        .replaceAll(RegExp(r'  +'), ' ')
+        .trim();
+  }
+
   static String normalize(String emoji) => emoji
       .replaceAll(RegExp(r'[\u{1F3FB}-\u{1F3FF}]', unicode: true), '')
       .replaceAll('\uFE0F', '');
