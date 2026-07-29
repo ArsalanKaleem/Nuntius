@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import '../../../core/extensions/extensions.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/auto_grid.dart';
 import '../../../core/widgets/eyebrow.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../../models/chat_analytics.dart';
 import '../../../models/participant_stats.dart';
+import '../../../models/stat_types.dart';
 
 class PeopleTab extends StatelessWidget {
   const PeopleTab({super.key, required this.analytics});
@@ -43,47 +45,10 @@ class PeopleTab extends StatelessWidget {
             'Awards',
             subtitle: 'Decided on rates, not raw totals',
           ),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 0.98,
+          AutoGrid(
             children: [
               for (final award in analytics.awards)
-                SurfaceCard(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(award.emoji, style: const TextStyle(fontSize: 24)),
-                      const SizedBox(height: 10),
-                      Eyebrow(award.title),
-                      const SizedBox(height: 6),
-                      Text(
-                        Fmt.name(award.winner, max: 14),
-                        style: Theme.of(context).textTheme.titleMedium,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        award.value,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      const Spacer(),
-                      Text(
-                        award.blurb,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(fontSize: 12),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
+                _AwardCard(award: award),
             ],
           ),
           const SizedBox(height: 28),
@@ -148,7 +113,7 @@ class _LeaderboardRow extends StatelessWidget {
                     ),
                     Text(
                       '${Fmt.compact(person.messageCount)}  '
-                      '${Fmt.percent(person.share, decimals: 0)}',
+                          '${Fmt.percent(person.share, decimals: 0)}',
                       style: theme.textTheme.bodyMedium,
                     ),
                   ],
@@ -263,15 +228,81 @@ class _Mini extends StatelessWidget {
   final String value;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        width: 96,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Eyebrow(label),
-            const SizedBox(height: 4),
-            Text(value, style: Theme.of(context).textTheme.titleMedium),
-          ],
-        ),
-      );
+  Widget build(BuildContext context) {
+    // The fixed width is what makes these line up into columns inside a Wrap,
+    // but it also means a long value ("1d 4h" at a large text scale) has
+    // nowhere to go. Scaling the box with the text keeps the grid intact, and
+    // the FittedBox absorbs whatever is left over.
+    final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
+
+    return SizedBox(
+      width: 96 * scale,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Eyebrow(label),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The award card lives in its own widget so its height is decided by its own
+/// content. It has no [Spacer] and no [Expanded]: inside [AutoGrid] the row
+/// measures children intrinsically, and a flex child has no fixed height to
+/// expand into. That combination — a flexible gap in a fixed-ratio cell — is
+/// what produced the overflow stripes on this tab.
+class _AwardCard extends StatelessWidget {
+  const _AwardCard({required this.award});
+  final Award award;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return SurfaceCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(award.emoji, style: const TextStyle(fontSize: 24)),
+          const SizedBox(height: 10),
+          Eyebrow(award.title),
+          const SizedBox(height: 6),
+          Text(
+            Fmt.name(award.winner, max: 14),
+            style: theme.textTheme.titleMedium,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            award.value,
+            style: theme.textTheme.bodyMedium,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            award.blurb,
+            style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
 }
