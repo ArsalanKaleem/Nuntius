@@ -25,10 +25,10 @@ class ShareSheet extends ConsumerStatefulWidget {
   final ChatAnalytics analytics;
 
   static Future<void> show(
-    BuildContext context, {
-    required WrappedCard card,
-    required ChatAnalytics analytics,
-  }) =>
+      BuildContext context, {
+        required WrappedCard card,
+        required ChatAnalytics analytics,
+      }) =>
       showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
@@ -70,12 +70,15 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final maxPreviewHeight = MediaQuery.sizeOf(context).height * 0.46;
-    final previewWidth =
-        (maxPreviewHeight * _format.aspectRatio).clamp(200.0, 300.0);
+    final media = MediaQuery.sizeOf(context);
+    final maxPreviewHeight = media.height * 0.42;
+    final maxPreviewWidth = media.width - 80;
+    var previewWidth = maxPreviewHeight * _format.aspectRatio;
+    if (previewWidth > maxPreviewWidth) previewWidth = maxPreviewWidth;
+    previewWidth = previewWidth.clamp(160.0, 340.0);
 
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -97,16 +100,23 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                 borderRadius: BorderRadius.circular(AppTheme.radius),
                 child: RepaintBoundary(
                   key: _boundaryKey,
-                  child: SizedBox(
-                    width: previewWidth,
-                    height: previewWidth / _format.aspectRatio,
-                    child: WrappedCardView(
-                      card: widget.card,
-                      analytics: widget.analytics,
-                      compact: true,
-                      // Counters must be settled before capture, so the
-                      // preview shows final values rather than animating.
-                      active: false,
+                  // Text scaling is neutralised inside the capture area on
+                  // purpose. The exported PNG is a fixed 1080px artefact that
+                  // gets sent to other people, so it has to look the same
+                  // regardless of the sender's accessibility text size — and a
+                  // scaled-up layout inside a fixed-ratio box would clip.
+                  child: MediaQuery.withNoTextScaling(
+                    child: SizedBox(
+                      width: previewWidth,
+                      height: previewWidth / _format.aspectRatio,
+                      child: WrappedCardView(
+                        card: widget.card,
+                        analytics: widget.analytics,
+                        compact: true,
+                        // Counters must be settled before capture, so the
+                        // preview shows final values rather than animating.
+                        active: false,
+                      ),
                     ),
                   ),
                 ),
@@ -134,10 +144,10 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
               onPressed: _working ? null : _share,
               icon: _working
                   ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
                   : const Icon(Icons.ios_share_rounded),
               label: Text(_working ? 'Preparing' : 'Share image'),
             ),

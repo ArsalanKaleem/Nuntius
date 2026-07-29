@@ -40,23 +40,29 @@ class WrappedCardView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final animations = ref.watch(animationScaleProvider) > 0;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(gradient: card.gradient),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          FloatingShapes(seed: card.id.hashCode, animate: active && animations),
-          if (card.layout == WrappedLayout.score && active && animations)
-            const Positioned.fill(child: Confetti()),
-          Padding(
-            padding: EdgeInsets.all(compact ? 20 : 32),
-            child: SafeArea(
-              top: !compact,
-              bottom: !compact,
-              child: _content(context),
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.15,
+      child: DecoratedBox(
+        decoration: BoxDecoration(gradient: card.gradient),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            FloatingShapes(
+              seed: card.id.hashCode,
+              animate: active && animations,
             ),
-          ),
-        ],
+            if (card.layout == WrappedLayout.score && active && animations)
+              const Positioned.fill(child: Confetti()),
+            Padding(
+              padding: EdgeInsets.all(compact ? 20 : 32),
+              child: SafeArea(
+                top: !compact,
+                bottom: !compact,
+                child: _content(context),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -81,22 +87,43 @@ class WrappedCardView extends ConsumerWidget {
               card.emoji ?? '💬',
               style: TextStyle(fontSize: 26 * _scale),
             ),
-            const Spacer(),
-            Text(
-              analytics.chatTitle.toUpperCase(),
-              style: eyebrowStyle,
-              overflow: TextOverflow.ellipsis,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                analytics.chatTitle.toUpperCase(),
+                style: eyebrowStyle,
+                textAlign: TextAlign.right,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
         const Spacer(),
-        Text(card.eyebrow.toUpperCase(), style: eyebrowStyle),
+        Text(
+          card.eyebrow.toUpperCase(),
+          style: eyebrowStyle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         SizedBox(height: 12 * _scale),
         _headline(context),
         SizedBox(height: 20 * _scale),
-        _detail(context),
+        // Loose and clipped. The detail content is bounded by design — the
+        // leaderboard caps its rows, the word cloud caps its words — and the
+        // clip is the safety net: on an unusually small screen the card crops
+        // instead of painting an overflow stripe across the gradient.
+        Flexible(
+          fit: FlexFit.loose,
+          child: ClipRect(child: _detail(context)),
+        ),
         const Spacer(),
-        Text(card.body, style: bodyStyle),
+        Text(
+          card.body,
+          style: bodyStyle,
+          maxLines: 4,
+          overflow: TextOverflow.ellipsis,
+        ),
         SizedBox(height: 14 * _scale),
         Row(
           children: [
@@ -199,7 +226,7 @@ class WrappedCardView extends ConsumerWidget {
         return const SizedBox.shrink();
 
       case WrappedLayout.leaderboard:
-        final people = analytics.participants.take(5).toList();
+        final people = analytics.participants.take(compact ? 4 : 5).toList();
         final top = people.isEmpty ? 1 : people.first.messageCount;
         return Column(
           children: [
@@ -308,46 +335,46 @@ class _ScoreRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.only(bottom: last ? 0 : 12 * scale),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 116 * scale,
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12 * scale,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+    padding: EdgeInsets.only(bottom: last ? 0 : 12 * scale),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 116 * scale,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12 * scale,
+              fontWeight: FontWeight.w600,
             ),
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(
-                  value: (value / 100).clamp(0.0, 1.0),
-                  minHeight: 7 * scale,
-                  backgroundColor: Colors.white24,
-                  valueColor:
-                      const AlwaysStoppedAnimation(AppColors.lightGreen),
-                ),
-              ),
-            ),
-            SizedBox(width: 10 * scale),
-            SizedBox(
-              width: 30 * scale,
-              child: Text(
-                value.round().toString(),
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12 * scale,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-      );
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: (value / 100).clamp(0.0, 1.0),
+              minHeight: 7 * scale,
+              backgroundColor: Colors.white24,
+              valueColor:
+              const AlwaysStoppedAnimation(AppColors.lightGreen),
+            ),
+          ),
+        ),
+        SizedBox(width: 10 * scale),
+        SizedBox(
+          width: 30 * scale,
+          child: Text(
+            value.round().toString(),
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12 * scale,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
