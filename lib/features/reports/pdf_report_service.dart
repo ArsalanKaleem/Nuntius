@@ -521,7 +521,10 @@ class PdfReportService {
 
     // Words are sanitized individually, and any that vanish entirely in
     // Latin-1 mode are dropped rather than printed as an empty gap.
-    final printable = <(String, int)>[];
+    //
+    // `num`, not `int`: NamedValue.value is declared num because the same type
+    // carries counts, rates and averages elsewhere in the analytics.
+    final printable = <(String, num)>[];
     for (final word in words) {
       final label = t.plain(word.name);
       if (label.isNotEmpty) printable.add((label, word.value));
