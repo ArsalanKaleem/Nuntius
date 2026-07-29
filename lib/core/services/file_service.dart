@@ -58,4 +58,38 @@ class FileService {
     await file.writeAsBytes(bytes, flush: true);
     return file;
   }
+
+  /// Copies a picked file's byte stream to a local temporary file and returns
+  /// its path.
+  ///
+  /// This is the bridge for cloud-backed pickers. When the user chooses a file
+  /// from Google Drive, OneDrive or another document provider, Android hands
+  /// back a `content://` URI rather than a filesystem path, and there may be no
+  /// local copy at all until something reads it. `dart:io` cannot open a
+  /// content URI, so the file is spooled through here first.
+  ///
+  /// The copy is written in chunks as they arrive rather than collected into a
+  /// list first, so importing a very large chat from Drive does not need the
+  /// whole export in memory before parsing has even started.
+  Future<File> spoolToTemporary(
+      String filename,
+      Stream<List<int>> bytes, {
+        void Function(int bytesWritten)? onProgress,
+      }) async {
+    final dir = await getTemporaryDirectory();
+    final file = File(p.join(dir.path, 'import-$filename'));
+    final sink = file.openWrite();
+    var written = 0;
+    try {
+      await for (final chunk in bytes) {
+        sink.add(chunk);
+        written += chunk.length;
+        onProgress?.call(written);
+      }
+      await sink.flush();
+    } finally {
+      await sink.close();
+    }
+    return file;
+  }
 }

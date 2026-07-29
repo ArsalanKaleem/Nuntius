@@ -39,13 +39,7 @@ dependencies:
   printing: ^5.13.0
   share_plus: ^9.0.0
 
-  # NOTE: two packages from the original brief were deliberately left out.
-  #  * `repaint_boundary` is not a pub package — RepaintBoundary ships with
-  #    Flutter, and lib/core/services/image_export_service.dart uses it directly.
-  #  * `syncfusion_flutter_charts` requires a paid Syncfusion licence for
-  #    commercial use. fl_chart covers every chart in this app. If you hold a
-  #    licence, add it here and swap the widgets in features/dashboard/tabs.
-  #  * `rive` is optional; add it if you ship .riv assets. Lottie is wired up.
+
 
 dev_dependencies:
   flutter_test:
@@ -56,8 +50,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/sample/
-    # Optional Unicode fonts for the PDF report. The folder ships with only a
-    # README, which is enough to satisfy the asset declaration; drop the three
-    # .ttf files named in assets/fonts/README.md in beside it and the report
-    # renders emoji and non-Latin scripts instead of omitting them.
     - assets/fonts/
