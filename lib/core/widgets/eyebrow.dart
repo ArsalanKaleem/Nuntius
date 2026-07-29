@@ -6,15 +6,22 @@ import 'package:flutter/material.dart';
 /// Wrapped cards, share images and the PDF — so a number is never presented
 /// without saying what it counts.
 class Eyebrow extends StatelessWidget {
-  const Eyebrow(this.text, {super.key, this.color});
+  const Eyebrow(this.text, {super.key, this.color, this.maxLines = 2});
   final String text;
   final Color? color;
 
+  /// Eyebrows are tracked out, so they run wide for their point size. Capping
+  /// the line count keeps a long label ("WEEKEND WARRIOR" at a large text
+  /// scale) from silently pushing everything below it down a line.
+  final int maxLines;
+
   @override
   Widget build(BuildContext context) => Text(
-        text.toUpperCase(),
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color),
-      );
+    text.toUpperCase(),
+    maxLines: maxLines,
+    overflow: TextOverflow.ellipsis,
+    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color),
+  );
 }
 
 class SectionHeader extends StatelessWidget {
