@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/extensions/extensions.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/auto_grid.dart';
 import '../../../core/widgets/eyebrow.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../../core/widgets/stat_tile.dart';
@@ -26,13 +27,7 @@ class OverviewTab extends StatelessWidget {
         const SizedBox(height: 24),
 
         const SectionHeader('The numbers'),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.18,
+        AutoGrid(
           children: [
             StatTile(
               label: 'Messages',
@@ -264,12 +259,12 @@ class _InsightCard extends StatelessWidget {
   final Insight insight;
 
   Color _tint() => switch (insight.tone) {
-        InsightTone.celebratory => AppColors.accent,
-        InsightTone.playful => AppColors.purple,
-        InsightTone.warm => AppColors.warning,
-        InsightTone.curious => AppColors.blue,
-        InsightTone.factual => AppColors.grey,
-      };
+    InsightTone.celebratory => AppColors.accent,
+    InsightTone.playful => AppColors.purple,
+    InsightTone.warm => AppColors.warning,
+    InsightTone.curious => AppColors.blue,
+    InsightTone.factual => AppColors.grey,
+  };
 
   @override
   Widget build(BuildContext context) {

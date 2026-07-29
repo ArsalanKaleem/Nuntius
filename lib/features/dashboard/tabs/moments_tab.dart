@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/extensions/extensions.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/auto_grid.dart';
 import '../../../core/widgets/eyebrow.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../../models/achievement.dart';
@@ -25,13 +26,7 @@ class MomentsTab extends StatelessWidget {
           'Badges',
           subtitle: '$unlocked of ${achievements.length} unlocked',
         ),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.05,
+        AutoGrid(
           children: [
             for (final achievement in achievements)
               _BadgeCard(achievement: achievement),
@@ -66,6 +61,7 @@ class _BadgeCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
@@ -89,16 +85,15 @@ class _BadgeCard extends StatelessWidget {
             Text(
               achievement.title,
               style: theme.textTheme.titleMedium,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
-            Expanded(
-              child: Text(
-                achievement.description,
-                style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
+            Text(
+              achievement.description,
+              style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
             if (!unlocked) ...[
               const SizedBox(height: 8),
@@ -171,7 +166,7 @@ class _TimelineRow extends StatelessWidget {
                   child: Container(
                     width: 2,
                     color:
-                        last ? Colors.transparent : theme.colorScheme.outline,
+                    last ? Colors.transparent : theme.colorScheme.outline,
                   ),
                 ),
               ],
