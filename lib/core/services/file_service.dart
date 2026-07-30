@@ -21,17 +21,49 @@ class FileService {
     return dir;
   }
 
+  /// Where a stored export lives, resolved fresh every time.
+  ///
+  /// This is deliberately computed from the report id rather than read back
+  /// from anything saved earlier. An app's documents directory is not at a
+  /// fixed absolute path: on iOS the container is addressed through a UUID that
+  /// changes whenever the app is reinstalled or updated, and the files inside
+  /// survive while the path that used to reach them does not. Storing the
+  /// absolute path at import time and reusing it later is the reason a chat
+  /// could be listed and still report itself as missing — Hive re-resolved its
+  /// own location at startup and kept working, while the paths it was holding
+  /// went stale.
+  ///
+  /// Only the id is durable, so only the id is trusted.
+  Future<String> exportPath(String id) async {
+    final dir = await _chatsDir();
+    return p.join(dir.path, '$id.txt');
+  }
+
   /// Copies a picked export into app storage so the report survives the
   /// original file being moved or deleted.
   Future<String> storeExport(String sourcePath, String id) async {
-    final dir = await _chatsDir();
-    final target = File(p.join(dir.path, '$id.txt'));
+    final target = File(await exportPath(id));
     await File(sourcePath).copy(target.path);
+
+    // Verified rather than assumed: a copy that silently produced nothing would
+    // otherwise only surface later, as a chat that cannot be reopened.
+    if (!await target.exists() || await target.length() == 0) {
+      throw FileSystemException(
+        'The export could not be copied into app storage.',
+        target.path,
+      );
+    }
     return target.path;
   }
 
-  Future<void> deleteExport(String path) async {
-    final file = File(path);
+  /// True when the stored copy for [id] is present and readable.
+  Future<bool> hasExport(String id) async {
+    final file = File(await exportPath(id));
+    return await file.exists() && await file.length() > 0;
+  }
+
+  Future<void> deleteExport(String id) async {
+    final file = File(await exportPath(id));
     if (await file.exists()) await file.delete();
   }
 
