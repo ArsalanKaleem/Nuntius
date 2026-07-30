@@ -21,6 +21,7 @@ class ChatReport {
     required this.lastAt,
     required this.sourceBytes,
     required this.friendshipScore,
+    this.originalName,
   });
 
   final String id;
@@ -37,6 +38,16 @@ class ChatReport {
   final int sourceBytes;
   final double friendshipScore;
 
+  /// The file name the export arrived with, e.g.
+  /// `WhatsApp Chat with Sana.txt`.
+  ///
+  /// The stored copy is named after this report's id, so by the time a chat is
+  /// reopened the original name is gone — and the chat title is derived from
+  /// that name. Without this field a reopened chat was titled after its id.
+  /// Nullable because reports saved before this field existed do not have it;
+  /// those fall back to the cached [title].
+  final String? originalName;
+
   bool get isGroupChat => participantNames.length > 2;
 
   Map<String, dynamic> toJson() => {
@@ -50,6 +61,7 @@ class ChatReport {
         'lastAt': lastAt.toIso8601String(),
         'sourceBytes': sourceBytes,
         'friendshipScore': friendshipScore,
+        'originalName': originalName,
       };
 
   factory ChatReport.fromJson(Map<String, dynamic> json) => ChatReport(
@@ -64,6 +76,7 @@ class ChatReport {
         lastAt: DateTime.parse(json['lastAt'] as String),
         sourceBytes: json['sourceBytes'] as int,
         friendshipScore: (json['friendshipScore'] as num).toDouble(),
+        originalName: json['originalName'] as String?,
       );
 
   String encode() => jsonEncode(toJson());

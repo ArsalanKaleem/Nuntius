@@ -95,6 +95,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   : const Icon(Icons.picture_as_pdf_outlined),
             ),
             IconButton(
+              tooltip: 'Read the messages',
+              onPressed: () => context.push(Routes.messages),
+              icon: const Icon(Icons.forum_outlined),
+            ),
+            IconButton(
               tooltip: 'Open Wrapped',
               onPressed: () => context.push(Routes.wrapped),
               icon: const Icon(Icons.auto_awesome_rounded),

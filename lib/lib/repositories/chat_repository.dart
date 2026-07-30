@@ -59,6 +59,7 @@ class ChatRepository {
       lastAt: analytics.conversation.lastAt,
       sourceBytes: chat.sourceBytes,
       friendshipScore: analytics.scores.friendship,
+      originalName: chat.sourceName,
     );
 
     await _box.put(id, report.encode());

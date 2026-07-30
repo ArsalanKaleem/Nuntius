@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/services/archive_service.dart';
 import '../../core/services/import_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/extensions/extensions.dart';
@@ -29,6 +30,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   /// True while a cloud-backed file is being copied to local storage, which is
   /// the one step of the import that can be slow before any parsing starts.
   bool _copying = false;
+
+  /// True while a zip is being opened or a chosen entry inflated.
+  bool _unzipping = false;
 
   /// Opens the system picker and resolves whatever comes back to a readable
   /// local path.
@@ -85,6 +89,21 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         path = copy.path;
       }
 
+      // WhatsApp shares a chat as a zip, so unwrap it here rather than making
+      // the user do it by hand.
+      final resolved = await _resolveArchive(path);
+      if (resolved == null) {
+        if (mounted) {
+          setState(() {
+            _peeking = false;
+            _copying = false;
+            _unzipping = false;
+          });
+        }
+        return;
+      }
+      path = resolved;
+
       final preview = await ref.read(importServiceProvider).peek(path);
       if (!mounted) return;
       setState(() {
@@ -92,15 +111,89 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         _preview = preview;
         _peeking = false;
         _copying = false;
+        _unzipping = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _peeking = false;
         _copying = false;
+        _unzipping = false;
       });
-      _showError('That file could not be opened. $e');
+      _showError(
+        e is ArchiveException ? e.message : 'That file could not be opened. $e',
+      );
     }
+  }
+
+
+  /// Returns a path to a plain text export, unwrapping a zip if that is what
+  /// was picked. Returns null when the user backs out of the entry chooser.
+  ///
+  /// Detection is by the zip signature rather than the `.zip` extension, for
+  /// the same reason the picker accepts any file: an archive that arrived
+  /// through Drive or another chat app is frequently renamed.
+  Future<String?> _resolveArchive(String path) async {
+    const archives = ArchiveService();
+    if (!await archives.looksLikeZip(path)) return path;
+
+    if (mounted) setState(() => _unzipping = true);
+    final entries = await archives.listTextEntries(path);
+
+    if (entries.isEmpty) {
+      throw const ArchiveException(
+        'That zip has no text file inside it. When you export from WhatsApp, '
+        'choose "Without media" — the zip you want contains a single .txt.',
+      );
+    }
+
+    // The common case by far: an export without media holds exactly one
+    // transcript, so opening a chooser for a list of one would be friction for
+    // its own sake.
+    final entry = entries.length == 1
+        ? entries.first
+        : await _chooseEntry(entries);
+    if (entry == null) return null;
+
+    final extracted = await archives.extract(path, entry.name);
+    return extracted.path;
+  }
+
+  Future<ArchiveEntry?> _chooseEntry(List<ArchiveEntry> entries) {
+    return showModalBottomSheet<ArchiveEntry>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 4),
+              child: SectionHeader(
+                'Which chat?',
+                subtitle: 'This zip holds more than one transcript',
+              ),
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: entries.length,
+                itemBuilder: (context, i) => ListTile(
+                  leading: const Icon(Icons.description_outlined),
+                  title: Text(
+                    entries[i].displayName,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(Fmt.bytes(entries[i].size)),
+                  onTap: () => Navigator.of(context).pop(entries[i]),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showError(String message) {
@@ -151,9 +244,11 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             const CircularProgressIndicator(),
             const SizedBox(height: 20),
             Text(
-              _copying
-                  ? 'Copying the file to this device'
-                  : 'Checking the file',
+              _unzipping
+                  ? 'Opening the zip'
+                  : _copying
+                      ? 'Copying the file to this device'
+                      : 'Checking the file',
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             if (_copying) ...[
@@ -189,6 +284,7 @@ class _Instructions extends StatelessWidget {
     'Tap the chat name, then Export chat',
     'Choose Without media',
     'Save it anywhere — this device, Drive, Files',
+    'Pick it below — the .zip is fine, no need to unzip',
   ];
 
   @override
@@ -200,7 +296,8 @@ class _Instructions extends StatelessWidget {
         Text('Get your export', style: theme.textTheme.displaySmall),
         const SizedBox(height: 8),
         Text(
-          'WhatsApp can save any conversation as a plain text file. That file '
+          'WhatsApp exports a conversation as a zip holding a plain text file. '
+          'Hand Nuntius either one. That file '
               'is all Nuntius needs — at any size, from anywhere your phone can '
               'reach, whatever it happens to be named.',
           style: theme.textTheme.bodyLarge,

@@ -4,6 +4,7 @@ import '../../../core/extensions/extensions.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/auto_grid.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/eyebrow.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../../models/chat_analytics.dart';
@@ -19,6 +20,15 @@ class PeopleTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final people = analytics.participants;
+
+    // A chat made entirely of system lines parses to zero participants, and
+    // `people.first` below would throw before anything rendered.
+    if (people.isEmpty) {
+      return const EmptyState(
+        title: 'No people to compare',
+        message: 'This export has no messages attributed to a sender.',
+      );
+    }
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
@@ -164,7 +174,11 @@ class _PersonCard extends StatelessWidget {
                 radius: 18,
                 backgroundColor: color.withOpacity(0.18),
                 child: Text(
-                  person.name.characters.first.toUpperCase(),
+                  // `characters.first` throws on an empty string, and a name
+                  // can be empty when an export writes a blank sender.
+                  person.name.isEmpty
+                      ? '?'
+                      : person.name.characters.first.toUpperCase(),
                   style: theme.textTheme.titleMedium?.copyWith(color: color),
                 ),
               ),

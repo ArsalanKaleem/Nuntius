@@ -142,6 +142,7 @@ class ImportController extends StateNotifier<ImportState> {
     String path, {
     bool persist = true,
   }) async {
+    if (state.busy) return null;
     state = const ImportState(busy: true);
     try {
       final result = await _ref.read(importServiceProvider).import(
@@ -183,11 +184,29 @@ class ImportController extends StateNotifier<ImportState> {
   }
 
   /// Re-reads and re-analyses a saved report.
+  ///
+  /// Two things here are about not crashing rather than about reopening:
+  ///
+  ///  * The re-entrancy guard. Both the home cards and the reports list call
+  ///    this from an async `onTap`, and a second tap while the first is still
+  ///    running used to spawn a second isolate that raced the first to write
+  ///    `sessionProvider` — with the loser's `Isolate.exit` arriving after its
+  ///    ports had been torn down.
+  ///  * The catch-all. This method previously caught only
+  ///    [ChatImportException], so anything else — a missing stored file, a
+  ///    permission error, a decode failure — escaped an async callback with no
+  ///    handler above it, which on Android takes the process down rather than
+  ///    showing an error. It also left `busy` stuck true, disabling the buttons
+  ///    for the rest of the session.
   Future<AnalysisSession?> openReport(ChatReport report) async {
+    if (state.busy) return null;
     state = const ImportState(busy: true);
     try {
       final result = await _ref.read(importServiceProvider).import(
             report.filePath,
+            // Keeps the reopened chat titled the way it was first imported:
+            // the stored copy is named after the report id, not the chat.
+            displayName: report.originalName,
             onProgress: (p) {
               if (mounted) state = ImportState(busy: true, progress: p);
             },
@@ -202,6 +221,11 @@ class ImportController extends StateNotifier<ImportState> {
       return session;
     } on ChatImportException catch (e) {
       if (mounted) state = ImportState(error: e.message);
+      return null;
+    } catch (e) {
+      if (mounted) {
+        state = ImportState(error: 'That chat could not be reopened. $e');
+      }
       return null;
     }
   }

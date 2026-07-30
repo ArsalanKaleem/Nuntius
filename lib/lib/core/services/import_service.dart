@@ -154,8 +154,15 @@ class ImportService {
     }
   }
 
+  /// Reads and analyses the export at [path].
+  ///
+  /// [displayName] overrides the name the chat title is derived from. It exists
+  /// because a saved chat is stored under its report id (`k3f9x1.txt`), so on
+  /// reopen the file name carries no meaning — passing the original name back
+  /// in keeps a reopened chat titled the same as when it was first imported.
   Future<ImportResult> import(
       String path, {
+        String? displayName,
         void Function(ImportProgress)? onProgress,
       }) async {
     final file = File(path);
@@ -209,7 +216,7 @@ class ImportService {
 
     await Isolate.spawn(
       _worker,
-      _WorkerArgs(receivePort.sendPort, path, length),
+      _WorkerArgs(receivePort.sendPort, path, length, displayName),
       onError: errorPort.sendPort,
       errorsAreFatal: true,
       debugName: 'nuntius-import',
@@ -223,7 +230,8 @@ class ImportService {
     final port = args.sendPort;
     try {
       final file = File(args.path);
-      final name = args.path.split(Platform.pathSeparator).last;
+      final name =
+          args.displayName ?? args.path.split(Platform.pathSeparator).last;
       final total = args.bytes;
 
       // Pass one: work out whether the export is day-first, month-first or
@@ -349,8 +357,9 @@ class ImportService {
 }
 
 class _WorkerArgs {
-  const _WorkerArgs(this.sendPort, this.path, this.bytes);
+  const _WorkerArgs(this.sendPort, this.path, this.bytes, this.displayName);
   final SendPort sendPort;
   final String path;
   final int bytes;
+  final String? displayName;
 }

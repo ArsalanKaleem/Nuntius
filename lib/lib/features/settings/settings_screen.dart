@@ -8,6 +8,8 @@ import '../../core/utils/formatters.dart';
 import '../../core/widgets/eyebrow.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../providers/providers.dart';
+import '../../routes/app_router.dart';
+import '../developer/developer_screen.dart';
 import '../../repositories/settings_repository.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -91,31 +93,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 const Eyebrow('Theme'),
                 const SizedBox(height: 10),
-                SegmentedButton<ThemeMode>(
-                  segments: const [
-                    ButtonSegment(
-                      value: ThemeMode.system,
-                      label: Text('System'),
-                    ),
-                    ButtonSegment(value: ThemeMode.light, label: Text('Light')),
-                    ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
+                // A SegmentedButton sizes itself to its widest segment times
+                // the segment count and does not shrink, so three labels inside
+                // a padded card overflowed on a narrow phone — and at a large
+                // text scale it overflowed on every phone. Chips wrap instead.
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final entry in const {
+                      ThemeMode.system: 'System',
+                      ThemeMode.light: 'Light',
+                      ThemeMode.dark: 'Dark',
+                    }.entries)
+                      ChoiceChip(
+                        label: Text(entry.value),
+                        selected: settings.themeMode == entry.key,
+                        onSelected: (_) => controller.setThemeMode(entry.key),
+                      ),
                   ],
-                  selected: {settings.themeMode},
-                  onSelectionChanged: (selection) =>
-                      controller.setThemeMode(selection.first),
                 ),
                 const SizedBox(height: 22),
                 const Eyebrow('Animation'),
                 const SizedBox(height: 6),
                 Text(
-                  'Counters, charts and the Wrapped story. Choose Off if '
-                      'movement is distracting — the app also follows your '
-                      'system-wide reduce-motion setting on its own.',
+                  'Applies to everything that moves — counters, charts, the '
+                      'Wrapped story and the transitions between screens. '
+                      'Choose Off if movement is distracting; the app also '
+                      'follows your system-wide reduce-motion setting on its '
+                      'own.',
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
+                  runSpacing: 8,
                   children: [
                     for (final speed in AnimationSpeed.values)
                       ChoiceChip(
@@ -199,19 +211,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 _Row(label: 'Version', value: AppInfo.version),
                 _Row(
                   label: 'Made by',
-                  value: 'Nuntius',
+                  value: DeveloperInfo.name,
                   detail: AppInfo.tagline,
                 ),
                 const SizedBox(height: 6),
                 SizedBox(
                   width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () => showLicensePage(
-                      context: context,
-                      applicationName: AppInfo.name,
-                      applicationVersion: AppInfo.version,
-                    ),
-                    child: const Text('Open source licences'),
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push(Routes.developer),
+                    icon: const Icon(Icons.person_outline_rounded, size: 18),
+                    label: const Text('About the developer'),
                   ),
                 ),
               ],

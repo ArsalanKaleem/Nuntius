@@ -54,6 +54,23 @@ class _WrappedScreenState extends ConsumerState<WrappedScreen> {
 
     final analytics = session.analytics;
     final cards = WrappedStory.build(analytics);
+
+    // The story drops any card it has no data for, so a chat of a dozen
+    // messages can legitimately produce none at all. `clamp(0, -1)` throws, so
+    // this used to take the app down rather than say there was nothing to show.
+    if (cards.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: EmptyState(
+          title: 'Not enough here yet',
+          message: 'This chat is too short to build a Wrapped from. The '
+              'dashboard still has everything that could be measured.',
+          actionLabel: 'Back to the dashboard',
+          onAction: () => context.pop(),
+        ),
+      );
+    }
+
     final card = cards[_index.clamp(0, cards.length - 1)];
 
     return Scaffold(

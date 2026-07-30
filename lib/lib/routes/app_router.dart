@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/dashboard/dashboard_screen.dart';
+import '../features/developer/developer_screen.dart';
 import '../features/import_chat/import_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/onboarding/splash_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/messages/messages_screen.dart';
 import '../features/reports/reports_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/wrapped/wrapped_screen.dart';
@@ -19,6 +21,8 @@ abstract final class Routes {
   static const wrapped = '/wrapped';
   static const reports = '/reports';
   static const settings = '/settings';
+  static const messages = '/messages';
+  static const developer = '/developer';
 }
 
 final appRouter = GoRouter(
@@ -69,6 +73,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: Routes.settings,
       builder: (_, __) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: Routes.messages,
+      builder: (_, __) => const MessagesScreen(),
+    ),
+    GoRoute(
+      path: Routes.developer,
+      builder: (_, __) => const DeveloperScreen(),
     ),
   ],
   errorBuilder: (context, state) => Scaffold(
