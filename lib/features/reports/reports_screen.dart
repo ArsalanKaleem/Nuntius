@@ -24,21 +24,37 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   Future<void> _open(ChatReport report) async {
     setState(() => _opening = report.id);
     final session =
-        await ref.read(importControllerProvider.notifier).openReport(report);
+    await ref.read(importControllerProvider.notifier).openReport(report);
     if (!mounted) return;
     setState(() => _opening = null);
 
     if (session == null) {
       final error = ref.read(importControllerProvider).error;
+      final missing =
+          await ref.read(chatRepositoryProvider).resolvePath(report) == null;
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            error ?? 'That chat could not be reopened. The file may be gone.',
+            error ?? 'That chat could not be reopened.',
           ),
           backgroundColor: AppColors.danger,
           behavior: SnackBarBehavior.floating,
+          // When the stored copy really is gone, the only useful thing left to
+          // do with the entry is clear it, so offer that rather than leaving a
+          // row that fails every time it is tapped.
+          action: missing
+              ? SnackBarAction(
+            label: 'Remove',
+            textColor: Colors.white,
+            onPressed: () =>
+                ref.read(reportsProvider.notifier).delete(report.id),
+          )
+              : null,
         ),
       );
+      ref.read(importControllerProvider.notifier).clearError();
       return;
     }
     context.go(Routes.dashboard);
@@ -51,7 +67,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         title: const Text('Delete this chat?'),
         content: Text(
           'The copy of ${report.title} stored by Nuntius will be deleted. '
-          'Your original export and the chat itself are untouched.',
+              'Your original export and the chat itself are untouched.',
         ),
         actions: [
           TextButton(
@@ -80,26 +96,26 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       appBar: AppBar(title: const Text('Your chats')),
       body: reports.isEmpty
           ? EmptyState(
-              title: 'Nothing saved yet',
-              message:
-                  'Chats you import are kept here, on this device only, so you '
-                  'can open them again without hunting for the file.',
-              actionLabel: 'Import a chat',
-              onAction: () => context.go(Routes.import),
-            )
+        title: 'Nothing saved yet',
+        message:
+        'Chats you import are kept here, on this device only, so you '
+            'can open them again without hunting for the file.',
+        actionLabel: 'Import a chat',
+        onAction: () => context.go(Routes.import),
+      )
           : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
-              itemCount: reports.length,
-              itemBuilder: (context, i) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _ReportCard(
-                  report: reports[i],
-                  busy: _opening == reports[i].id,
-                  onOpen: () => _open(reports[i]),
-                  onDelete: () => _confirmDelete(reports[i]),
-                ),
-              ),
-            ),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+        itemCount: reports.length,
+        itemBuilder: (context, i) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _ReportCard(
+            report: reports[i],
+            busy: _opening == reports[i].id,
+            onOpen: () => _open(reports[i]),
+            onDelete: () => _confirmDelete(reports[i]),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -137,7 +153,7 @@ class _ReportCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${Fmt.compact(report.messageCount)} messages · '
-                  '${report.participantNames.length} people',
+                      '${report.participantNames.length} people',
                   style: theme.textTheme.bodyMedium,
                 ),
                 Text(

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:hive/hive.dart';
 
 import '../core/constants/app_constants.dart';
@@ -66,9 +68,38 @@ class ChatRepository {
     return report;
   }
 
+  /// Resolves the readable path of a saved export, or null when the copy has
+  /// gone missing.
+  ///
+  /// The stored [ChatReport.filePath] is only consulted as a fallback for
+  /// reports written by older builds. The live answer comes from the id, since
+  /// that is the only part of the location guaranteed to still be valid after
+  /// the app is reinstalled or updated.
+  Future<String?> resolvePath(ChatReport report) async {
+    if (await _files.hasExport(report.id)) {
+      return _files.exportPath(report.id);
+    }
+
+    // Legacy entries: try the absolute path recorded at import time, and if it
+    // still works, leave it be — reopening will succeed and the next save uses
+    // the new scheme.
+    final legacy = File(report.filePath);
+    if (await legacy.exists() && await legacy.length() > 0) {
+      return report.filePath;
+    }
+    return null;
+  }
+
   Future<void> delete(String id) async {
+    await _files.deleteExport(id);
+
+    // Older reports may still have a copy at the absolute path they recorded.
     final report = byId(id);
-    if (report != null) await _files.deleteExport(report.filePath);
+    if (report != null) {
+      final legacy = File(report.filePath);
+      if (await legacy.exists()) await legacy.delete();
+    }
+
     await _box.delete(id);
   }
 

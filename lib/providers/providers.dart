@@ -18,27 +18,27 @@ import '../repositories/settings_repository.dart';
 /// Overridden in `main()` once the plugins have initialised, so nothing in the
 /// tree ever has to await storage.
 final sharedPreferencesProvider = Provider<SharedPreferences>(
-  (ref) => throw UnimplementedError('Override in main()'),
+      (ref) => throw UnimplementedError('Override in main()'),
 );
 
 final reportsBoxProvider = Provider<Box<String>>(
-  (ref) => throw UnimplementedError('Override in main()'),
+      (ref) => throw UnimplementedError('Override in main()'),
 );
 
 final fileServiceProvider = Provider<FileService>((ref) => const FileService());
 
 final importServiceProvider =
-    Provider<ImportService>((ref) => const ImportService());
+Provider<ImportService>((ref) => const ImportService());
 
 final chatRepositoryProvider = Provider<ChatRepository>(
-  (ref) => ChatRepository(
+      (ref) => ChatRepository(
     ref.watch(reportsBoxProvider),
     ref.watch(fileServiceProvider),
   ),
 );
 
 final settingsRepositoryProvider = Provider<SettingsRepository>(
-  (ref) => SettingsRepository(ref.watch(sharedPreferencesProvider)),
+      (ref) => SettingsRepository(ref.watch(sharedPreferencesProvider)),
 );
 
 // ---------------------------------------------------------------- settings
@@ -64,20 +64,20 @@ class SettingsController extends StateNotifier<AppSettings> {
 }
 
 final settingsProvider =
-    StateNotifierProvider<SettingsController, AppSettings>(
-  (ref) => SettingsController(ref.watch(settingsRepositoryProvider)),
+StateNotifierProvider<SettingsController, AppSettings>(
+      (ref) => SettingsController(ref.watch(settingsRepositoryProvider)),
 );
 
 /// Multiplier applied to every animation duration in the app.
 final animationScaleProvider = Provider<double>(
-  (ref) => ref.watch(settingsProvider).animationSpeed.multiplier,
+      (ref) => ref.watch(settingsProvider).animationSpeed.multiplier,
 );
 
 // ----------------------------------------------------------------- reports
 
 final reportsProvider =
-    StateNotifierProvider<ReportsController, List<ChatReport>>(
-  (ref) => ReportsController(ref.watch(chatRepositoryProvider)),
+StateNotifierProvider<ReportsController, List<ChatReport>>(
+      (ref) => ReportsController(ref.watch(chatRepositoryProvider)),
 );
 
 class ReportsController extends StateNotifier<List<ChatReport>> {
@@ -139,26 +139,29 @@ class ImportController extends StateNotifier<ImportState> {
   /// Imports a picked file. [persist] is false for the sample chat, which
   /// should not clutter the saved reports list.
   Future<AnalysisSession?> importFile(
-    String path, {
-    bool persist = true,
-  }) async {
-    if (state.busy) return null;
+      String path, {
+        bool persist = true,
+      }) async {
+    if (state.busy) {
+      state = const ImportState(error: 'An import is already running.');
+      return null;
+    }
     state = const ImportState(busy: true);
     try {
       final result = await _ref.read(importServiceProvider).import(
-            path,
-            onProgress: (p) {
-              if (mounted) state = ImportState(busy: true, progress: p);
-            },
-          );
+        path,
+        onProgress: (p) {
+          if (mounted) state = ImportState(busy: true, progress: p);
+        },
+      );
 
       ChatReport? report;
       if (persist) {
         report = await _ref.read(chatRepositoryProvider).save(
-              sourcePath: path,
-              chat: result.chat,
-              analytics: result.analytics,
-            );
+          sourcePath: path,
+          chat: result.chat,
+          analytics: result.analytics,
+        );
         _ref.read(reportsProvider.notifier).refresh();
       }
 
@@ -199,18 +202,37 @@ class ImportController extends StateNotifier<ImportState> {
   ///    showing an error. It also left `busy` stuck true, disabling the buttons
   ///    for the rest of the session.
   Future<AnalysisSession?> openReport(ChatReport report) async {
-    if (state.busy) return null;
+    if (state.busy) {
+      // Setting an error rather than returning a bare null: the callers show
+      // "the file may be gone" whenever this returns null without one, which
+      // made a harmless double tap look like data loss.
+      state = const ImportState(error: 'An import is already running.');
+      return null;
+    }
     state = const ImportState(busy: true);
     try {
+      // Resolved now rather than trusting the path recorded at import time,
+      // which does not survive a reinstall on iOS.
+      final path =
+      await _ref.read(chatRepositoryProvider).resolvePath(report);
+
+      if (path == null) {
+        state = const ImportState(
+          error: 'The saved copy of this chat is missing. Import the export '
+              'again to rebuild it.',
+        );
+        return null;
+      }
+
       final result = await _ref.read(importServiceProvider).import(
-            report.filePath,
-            // Keeps the reopened chat titled the way it was first imported:
-            // the stored copy is named after the report id, not the chat.
-            displayName: report.originalName,
-            onProgress: (p) {
-              if (mounted) state = ImportState(busy: true, progress: p);
-            },
-          );
+        path,
+        // Keeps the reopened chat titled the way it was first imported:
+        // the stored copy is named after the report id, not the chat.
+        displayName: report.originalName,
+        onProgress: (p) {
+          if (mounted) state = ImportState(busy: true, progress: p);
+        },
+      );
       final session = AnalysisSession(
         chat: result.chat,
         analytics: result.analytics,
@@ -235,9 +257,9 @@ class ImportController extends StateNotifier<ImportState> {
   Future<AnalysisSession?> importSample() async {
     final raw = await rootBundle.loadString('assets/sample/sample_chat.txt');
     final file = await _ref.read(fileServiceProvider).writeTemporary(
-          'WhatsApp Chat with Sample Chat.txt',
-          utf8.encode(raw), // UTF-8, so the emoji in the sample survive the round trip
-        );
+      'WhatsApp Chat with Sample Chat.txt',
+      utf8.encode(raw), // UTF-8, so the emoji in the sample survive the round trip
+    );
     return importFile(file.path, persist: false);
   }
 
@@ -245,6 +267,6 @@ class ImportController extends StateNotifier<ImportState> {
 }
 
 final importControllerProvider =
-    StateNotifierProvider<ImportController, ImportState>(
-  (ref) => ImportController(ref),
+StateNotifierProvider<ImportController, ImportState>(
+      (ref) => ImportController(ref),
 );
