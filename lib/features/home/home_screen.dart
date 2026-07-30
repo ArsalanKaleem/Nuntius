@@ -91,13 +91,13 @@ class HomeScreen extends ConsumerWidget {
                         onPressed: importing
                             ? null
                             : () async {
-                                final session = await ref
-                                    .read(importControllerProvider.notifier)
-                                    .importSample();
-                                if (session != null && context.mounted) {
-                                  context.push(Routes.dashboard);
-                                }
-                              },
+                          final session = await ref
+                              .read(importControllerProvider.notifier)
+                              .importSample();
+                          if (session != null && context.mounted) {
+                            context.push(Routes.dashboard);
+                          }
+                        },
                         icon: const Icon(Icons.play_circle_outline_rounded),
                         label: const Text('Try the sample chat'),
                       ),
@@ -120,12 +120,33 @@ class HomeScreen extends ConsumerWidget {
                             child: SurfaceCard(
                               padding: const EdgeInsets.all(16),
                               onTap: () async {
-                                final session = await ref
-                                    .read(importControllerProvider.notifier)
-                                    .openReport(report);
-                                if (session != null && context.mounted) {
-                                  context.push(Routes.dashboard);
+                                final notifier = ref
+                                    .read(importControllerProvider.notifier);
+                                final session =
+                                await notifier.openReport(report);
+                                if (!context.mounted) return;
+
+                                if (session == null) {
+                                  // Previously this did nothing at all on
+                                  // failure, so a chat that could not be
+                                  // reopened looked like an unresponsive tap.
+                                  final error = ref
+                                      .read(importControllerProvider)
+                                      .error;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        error ??
+                                            'That chat could not be reopened.',
+                                      ),
+                                      backgroundColor: AppColors.danger,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  notifier.clearError();
+                                  return;
                                 }
+                                context.push(Routes.dashboard);
                               },
                               child: Row(
                                 children: [
@@ -135,7 +156,7 @@ class HomeScreen extends ConsumerWidget {
                                     alignment: Alignment.center,
                                     decoration: BoxDecoration(
                                       color:
-                                          AppColors.accent.withOpacity(0.14),
+                                      AppColors.accent.withOpacity(0.14),
                                       borderRadius: BorderRadius.circular(14),
                                     ),
                                     child: Text(
@@ -148,7 +169,7 @@ class HomeScreen extends ConsumerWidget {
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           report.title,
@@ -157,8 +178,8 @@ class HomeScreen extends ConsumerWidget {
                                         ),
                                         Text(
                                           '${Fmt.compact(report.messageCount)} '
-                                          'messages · '
-                                          '${Fmt.dateRange(report.firstAt, report.lastAt)}',
+                                              'messages · '
+                                              '${Fmt.dateRange(report.firstAt, report.lastAt)}',
                                           style: theme.textTheme.bodyMedium,
                                           overflow: TextOverflow.ellipsis,
                                         ),
