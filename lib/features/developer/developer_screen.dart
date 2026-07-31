@@ -16,7 +16,7 @@ import '../../core/widgets/glass_card.dart';
 /// screen updates.
 abstract final class DeveloperInfo {
   static const name = 'Arsalan Kaleem';
-  static const role = 'Mobile developer';
+  static const role = 'Software Engineer';
   static const location = 'Karachi, Pakistan';
 
   static const bio =
