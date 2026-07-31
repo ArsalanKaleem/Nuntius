@@ -24,7 +24,7 @@ abstract final class DeveloperInfo {
       'wanting to see what a decade of messages actually looks like, without '
       'handing that history to somebody else to read first.';
 
-  static const email = 'you@example.com';
+  static const email = 'arsalanabbasi.here@gmail.com';
 
   /// Only entries with a non-empty url are shown, so deleting a line is enough
   /// to remove a link.
