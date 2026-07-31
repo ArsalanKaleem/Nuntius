@@ -43,8 +43,8 @@ abstract final class DeveloperInfo {
     ),
     DeveloperLink(
       label: 'Website',
-      handle: 'yoursite.com',
-      url: 'https://yoursite.com',
+      handle: 'arsalankaleem.github.io',
+      url: 'https://arsalankaleem.github.io/portfolio/',
       icon: Icons.language_rounded,
     ),
   ];
