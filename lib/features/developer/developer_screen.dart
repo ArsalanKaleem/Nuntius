@@ -31,8 +31,8 @@ abstract final class DeveloperInfo {
   static const links = <DeveloperLink>[
     DeveloperLink(
       label: 'GitHub',
-      handle: '@yourhandle',
-      url: 'https://github.com/yourhandle',
+      handle: '@ArsalanKaleem',
+      url: 'https://github.com/ArsalanKaleem',
       icon: Icons.code_rounded,
     ),
     DeveloperLink(
