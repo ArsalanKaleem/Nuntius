@@ -37,21 +37,9 @@ abstract final class DeveloperInfo {
     ),
     DeveloperLink(
       label: 'LinkedIn',
-      handle: 'Your Name',
-      url: 'https://linkedin.com/in/yourhandle',
+      handle: 'Arsalan Kaleem',
+      url: 'www.linkedin.com/in/arsalankaleem',
       icon: Icons.work_outline_rounded,
-    ),
-    DeveloperLink(
-      label: 'X',
-      handle: '@yourhandle',
-      url: 'https://x.com/yourhandle',
-      icon: Icons.alternate_email_rounded,
-    ),
-    DeveloperLink(
-      label: 'Instagram',
-      handle: '@yourhandle',
-      url: 'https://instagram.com/yourhandle',
-      icon: Icons.camera_alt_outlined,
     ),
     DeveloperLink(
       label: 'Website',
