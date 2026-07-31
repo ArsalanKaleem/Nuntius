@@ -15,7 +15,7 @@ import '../../core/widgets/glass_card.dart';
 /// should not make one to find out who wrote it. Edit the values here and the
 /// screen updates.
 abstract final class DeveloperInfo {
-  static const name = 'Your Name';
+  static const name = 'Arsalan Kaleem';
   static const role = 'Mobile developer';
   static const location = 'Karachi, Pakistan';
 
