@@ -19,7 +19,6 @@ archive and a printable report — all computed locally, on your device.
 
 ## Screenshots
 
-> Replace these with real captures before publishing.
 
 
 |                       Dashboard                       |                       Wrapped                       |                       Import                       |
