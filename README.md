@@ -21,9 +21,10 @@ archive and a printable report — all computed locally, on your device.
 
 > Replace these with real captures before publishing.
 
-|                   Dashboard                    |                  Wrapped                   |                  Messages                  |
-| :--------------------------------------------: | :----------------------------------------: | :----------------------------------------: |
-| <img src="docs/screenshots/dashboard.png" width="220"> | <img src="docs/screenshots/wrapped.png" width="220"> | <img src="docs/screenshots/messages.png" width="220"> |
+
+|                       Dashboard                       |                       Wrapped                       |                       Import                       |
+| :----------------------------------------------------: | :--------------------------------------------------: | :-------------------------------------------------: |
+| <img src="docs/screenshots/dashboard.png" width="220"> | <img src="docs/screenshots/wrapped.png" width="220"> | <img src="docs/screenshots/import.png" width="220"> |
 
 ---
 
@@ -237,8 +238,7 @@ The one exception is the `google_fonts` fetch above, which carries no chat data.
 
 Xcode only runs on macOS, but you can rent one by the minute.
 
-**Build** — GitHub Actions on a `macos-14` runner: `flutter build ios --release
---no-codesign`, then zip `Runner.app` into a `Payload/` folder to make an IPA,
+**Build** — GitHub Actions on a `macos-14` runner: `flutter build ios --release --no-codesign`, then zip `Runner.app` into a `Payload/` folder to make an IPA,
 and download the artifact. macOS runner minutes bill at **10×** on private repos.
 
 **Install** — [Sideloadly](https://sideloadly.io) on Windows: plug the iPhone in
@@ -262,10 +262,10 @@ honestly reproduce file-picker or share-sheet behaviour.
 
 ## Roadmap
 
-- [ ] Telegram and Signal parsers
-- [ ] Group-chat-specific statistics
-- [ ] Widget test coverage
-- [ ] Bundled Manrope to remove the last network call
+- [ ]  Telegram and Signal parsers
+- [ ]  Group-chat-specific statistics
+- [ ]  Widget test coverage
+- [ ]  Bundled Manrope to remove the last network call
 
 ---
 
