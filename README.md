@@ -197,28 +197,6 @@ a `ParsedChat`.
 
 ---
 
-## Fonts
-
-The PDF needs fonts bundled to render emoji and non-Latin scripts. A PDF carries
-its own fonts; with none embedded, readers fall back to the "base 14" set, which
-is Latin-1 only — and a missing glyph prints as *nothing*, not a substitute.
-
-Drop these into `assets/fonts/`:
-
-- `NotoSans-Regular.ttf`
-- `NotoSans-Bold.ttf`
-- `NotoEmoji-Regular.ttf` — the monochrome one, not Color Emoji
-
-Without them the report degrades honestly rather than silently: emoji and
-non-Latin text are stripped instead of printed as boxes, unrepresentable names
-become "Participant 1", and the method note says so. Fonts are never downloaded.
-
-The app's own typography uses `google_fonts`, which fetches Manrope on first
-launch. To remove that call: bundle the Manrope TTFs, declare them under `fonts:`
-in `pubspec.yaml`, and set `GoogleFonts.config.allowRuntimeFetching = false`.
-
----
-
 ## Privacy
 
 No chat content is transmitted, ever. There is no HTTP client anywhere in the
