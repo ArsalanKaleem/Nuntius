@@ -77,6 +77,16 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
     if (previewWidth > maxPreviewWidth) previewWidth = maxPreviewWidth;
     previewWidth = previewWidth.clamp(160.0, 340.0);
 
+    var previewHeight = previewWidth / _format.aspectRatio;
+    // The 160-340 clamp above can push the width past what maxPreviewHeight
+    // allows for tall/narrow formats (e.g. Story). Re-derive both dimensions
+    // from the height cap in that case, so the preview never grows past the
+    // 42%-of-screen budget it's supposed to respect.
+    if (previewHeight > maxPreviewHeight) {
+      previewHeight = maxPreviewHeight;
+      previewWidth = previewHeight * _format.aspectRatio;
+    }
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -108,7 +118,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                   child: MediaQuery.withNoTextScaling(
                     child: SizedBox(
                       width: previewWidth,
-                      height: previewWidth / _format.aspectRatio,
+                      height: previewHeight,
                       child: WrappedCardView(
                         card: widget.card,
                         analytics: widget.analytics,
