@@ -109,11 +109,17 @@ class WrappedCardView extends ConsumerWidget {
         SizedBox(height: 12 * _scale),
         _headline(context),
         SizedBox(height: 20 * _scale),
-        // Loose and clipped. The detail content is bounded by design — the
-        // leaderboard caps its rows, the word cloud caps its words — and the
-        // clip is the safety net: on an unusually small screen the card crops
-        // instead of painting an overflow stripe across the gradient.
+        // Loose and clipped, weighted so it actually gets the room it
+        // needs. The two Spacers only exist to create breathing space above
+        // and below this block — at equal flex they were competing with it
+        // for space, squeezing the leaderboard/word cloud/score card even
+        // when there was plenty of room on screen. The detail content is
+        // still bounded by design — the leaderboard caps its rows, the word
+        // cloud caps its words — and the clip is the safety net: on an
+        // unusually small screen the card crops instead of painting an
+        // overflow stripe across the gradient.
         Flexible(
+          flex: 6,
           fit: FlexFit.loose,
           child: ClipRect(child: _detail(context)),
         ),
