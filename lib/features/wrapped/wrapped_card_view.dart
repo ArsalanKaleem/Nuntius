@@ -109,15 +109,6 @@ class WrappedCardView extends ConsumerWidget {
         SizedBox(height: 12 * _scale),
         _headline(context),
         SizedBox(height: 20 * _scale),
-        // Loose and clipped, weighted so it actually gets the room it
-        // needs. The two Spacers only exist to create breathing space above
-        // and below this block — at equal flex they were competing with it
-        // for space, squeezing the leaderboard/word cloud/score card even
-        // when there was plenty of room on screen. The detail content is
-        // still bounded by design — the leaderboard caps its rows, the word
-        // cloud caps its words — and the clip is the safety net: on an
-        // unusually small screen the card crops instead of painting an
-        // overflow stripe across the gradient.
         Flexible(
           flex: 6,
           fit: FlexFit.loose,
@@ -147,15 +138,6 @@ class WrappedCardView extends ConsumerWidget {
       ],
     );
 
-    // Portrait has height to spare, so the Spacers above do the layout work
-    // and the card fills the screen exactly. Landscape is a much shorter
-    // viewport, and stacking every element at accessibility text scales can
-    // still exceed it even after the FittedBox headlines shrink. Rather than
-    // let that overflow paint the black-and-yellow RenderFlex error stripe,
-    // give the Column room to be exactly as tall as it needs to be — via
-    // IntrinsicHeight inside a ConstrainedBox with the viewport as a floor —
-    // and let it scroll only in that edge case. When content already fits,
-    // this scrolls nowhere and behaves exactly like the plain Column did.
     return LayoutBuilder(
       builder: (context, constraints) => SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
@@ -170,12 +152,6 @@ class WrappedCardView extends ConsumerWidget {
   Widget _headline(BuildContext context) {
     switch (card.layout) {
       case WrappedLayout.intro:
-      // Shrink-to-fit: at 46 * scale this text is sized for portrait's
-      // tall, narrow viewport. Rotate the phone and the available height
-      // drops to a fraction of that, so a fixed-size Text here overflowed
-      // the Column in landscape. FittedBox scales the whole line down as
-      // one unit instead, which is why maxLines/ellipsis are dropped —
-      // there's nothing left to truncate once it can shrink.
         return FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
@@ -252,8 +228,6 @@ class WrappedCardView extends ConsumerWidget {
     }
   }
 
-  /// The area under the headline. Most cards leave it empty; the ones that
-  /// need a chart, a bar list or a cloud fill it here.
   Widget _detail(BuildContext context) {
     final theme = Theme.of(context);
 
