@@ -269,13 +269,9 @@ flutter test
 - tests cover the parser and analytics engine; UI coverage is thin
 
 ---
-
 ## License
 
-Not yet chosen. Without a licence file, default copyright applies and others have
-no right to reuse this code — pick one before publishing if that isn't what you
-want. [MIT](https://choosealicense.com/licenses/mit/) for permissive reuse,
-[GPL-3.0](https://choosealicense.com/licenses/gpl-3.0/) to keep derivatives open.
+MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
