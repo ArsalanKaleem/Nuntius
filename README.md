@@ -274,6 +274,11 @@ flutter test
 MIT License — see [LICENSE](LICENSE) for details.
 
 ---
+## Download
+
+Grab the latest APK from the [Releases](../../releases) page — **Nuntius 1.0.0**.
+
+📱 iOS — coming soon.
 
 <div align="center">
 
