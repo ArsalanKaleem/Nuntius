@@ -78,7 +78,7 @@ class WrappedCardView extends ConsumerWidget {
       fontSize: 16 * _scale,
     );
 
-    return Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
@@ -146,40 +146,79 @@ class WrappedCardView extends ConsumerWidget {
         ),
       ],
     );
+
+    // Portrait has height to spare, so the Spacers above do the layout work
+    // and the card fills the screen exactly. Landscape is a much shorter
+    // viewport, and stacking every element at accessibility text scales can
+    // still exceed it even after the FittedBox headlines shrink. Rather than
+    // let that overflow paint the black-and-yellow RenderFlex error stripe,
+    // give the Column room to be exactly as tall as it needs to be — via
+    // IntrinsicHeight inside a ConstrainedBox with the viewport as a floor —
+    // and let it scroll only in that edge case. When content already fits,
+    // this scrolls nowhere and behaves exactly like the plain Column did.
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: IntrinsicHeight(child: column),
+        ),
+      ),
+    );
   }
 
   Widget _headline(BuildContext context) {
     switch (card.layout) {
       case WrappedLayout.intro:
-        return Text(
-          card.headline,
-          style: AppTypography.wrappedNumeral(46 * _scale),
-          maxLines: 3,
+      // Shrink-to-fit: at 46 * scale this text is sized for portrait's
+      // tall, narrow viewport. Rotate the phone and the available height
+      // drops to a fraction of that, so a fixed-size Text here overflowed
+      // the Column in landscape. FittedBox scales the whole line down as
+      // one unit instead, which is why maxLines/ellipsis are dropped —
+      // there's nothing left to truncate once it can shrink.
+        return FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            card.headline,
+            style: AppTypography.wrappedNumeral(46 * _scale),
+            maxLines: 3,
+          ),
         );
 
       case WrappedLayout.emoji:
-        return Text(
-          card.value ?? '💬',
-          style: TextStyle(fontSize: 110 * _scale),
+      // Same landscape-overflow issue: 110 * scale is huge relative to a
+      // rotated phone's height budget.
+        return FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            card.value ?? '💬',
+            style: TextStyle(fontSize: 110 * _scale),
+          ),
         );
 
       case WrappedLayout.score:
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            AnimatedCounter(
-              value: card.numericValue ?? 0,
-              style: AppTypography.wrappedNumeral(104 * _scale),
-            ),
-            Padding(
-              padding: EdgeInsets.only(bottom: 14 * _scale),
-              child: Text(
-                '/100',
-                style: AppTypography.wrappedNumeral(28 * _scale)
-                    .copyWith(color: Colors.white54),
+        return FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              AnimatedCounter(
+                value: card.numericValue ?? 0,
+                style: AppTypography.wrappedNumeral(104 * _scale),
               ),
-            ),
-          ],
+              Padding(
+                padding: EdgeInsets.only(bottom: 14 * _scale),
+                child: Text(
+                  '/100',
+                  style: AppTypography.wrappedNumeral(28 * _scale)
+                      .copyWith(color: Colors.white54),
+                ),
+              ),
+            ],
+          ),
         );
 
       case WrappedLayout.stat:
